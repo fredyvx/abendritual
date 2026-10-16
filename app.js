@@ -584,8 +584,16 @@ function renderMomente(rows) {
 
 $("#begin").addEventListener("click", startWriting);
 
+// Einstellungen mitten im Ritual geöffnet? Dann führt „Abbrechen“ zurück zum Sortieren.
+let settingsFromSort = false;
+
 document.querySelectorAll("[data-back]").forEach((b) =>
   b.addEventListener("click", () => {
+    if (b.closest("#settings") && settingsFromSort) {
+      settingsFromSort = false;
+      show("sortieren");
+      return;
+    }
     clearTimers();
     renderHome();
     show(b.dataset.back);
@@ -634,6 +642,7 @@ function resetSortScreen() {
   $("#release").disabled = true;
   $("#sort-next").hidden = true;
   $("#sort-manual").hidden = true;
+  $("#sort-setup").hidden = true;
 }
 
 let sortRun = 0; // verhindert, dass eine späte Gemini-Antwort einen neuen Durchgang überschreibt
@@ -670,6 +679,7 @@ async function startSorting(text) {
   const s = settings();
   if (s.sortmode !== "ki" || !s.key) {
     sortManually(s.sortmode === "ki" ? "Kein Gemini-Schlüssel eingetragen, also sortierst du selbst. Tipp bei jedem Gedanken an, wo er hingehört." : null);
+    $("#sort-setup").hidden = s.sortmode !== "ki";
     return;
   }
 
@@ -778,6 +788,7 @@ $("#release").addEventListener("click", () => {
   }
   $("#release").hidden = true;
   $("#sort-manual").hidden = true;
+  $("#sort-setup").hidden = true;
   $("#sort-status").textContent = "";
   screen.classList.add("releasing");
 
@@ -1349,9 +1360,7 @@ $("#open-settings").addEventListener("click", () => {
   const s = settings();
   document.querySelectorAll('input[name="sortmode"]').forEach((r) => (r.checked = r.value === s.sortmode));
   $("#set-key").value = store.get("settings", {}).key ?? "";
-  $("#set-key").placeholder = LOCAL_KEY
-    ? "Wird aus config.local.js genommen"
-    : "Kostenlos bei aistudio.google.com";
+  $("#set-key").placeholder = LOCAL_KEY ? "Wird aus config.local.js genommen" : "Hier einfügen";
   $("#set-model").value = s.model;
   $("#set-music").value = s.music;
 
@@ -1378,8 +1387,20 @@ $("#settings-save").addEventListener("click", () => {
     voice: $("#set-voice").value || VOICES[0].id,
     music: Number($("#set-music").value),
   });
+  if (settingsFromSort) {
+    // Zurück ins Ritual und mit dem neuen Schlüssel gleich sortieren – der Text bleibt erhalten.
+    settingsFromSort = false;
+    startSorting(rawText);
+    return;
+  }
   renderHome();
   show("start");
+});
+
+$("#sort-setup").addEventListener("click", () => {
+  $("#open-settings").click();
+  settingsFromSort = true;
+  $("#set-key").focus();
 });
 
 $("#wipe").addEventListener("click", async () => {

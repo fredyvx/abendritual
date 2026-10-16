@@ -110,6 +110,7 @@
         <button id="release" class="primary" type="button" disabled>Ablegen</button>
         <button id="sort-next" class="primary" type="button" hidden>Weiter</button>
         <button id="sort-manual" class="link" type="button" hidden>Selbst sortieren</button>
+        <button id="sort-setup" class="link" type="button" hidden>Gemini-Schlüssel eintragen</button>
       </div>
     </section>
 
@@ -194,8 +195,9 @@
 
         <label class="field">
           <span>Gemini-API-Schlüssel</span>
-          <input id="set-key" type="password" autocomplete="off" spellcheck="false" placeholder="Kostenlos bei aistudio.google.com">
+          <input id="set-key" type="password" autocomplete="off" spellcheck="false" placeholder="Hier einfügen">
         </label>
+        <p class="hint quiet">Kostenlos erstellen auf <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (mit deinem Google-Konto auf „Create API key“). Der Schlüssel bleibt nur in diesem Browser und wird nicht mit deinem Konto geteilt. Auf jedem Gerät einmal eintragen.</p>
         <label class="field">
           <span>Gemini-Modell</span>
           <input id="set-model" type="text" autocomplete="off" spellcheck="false">
