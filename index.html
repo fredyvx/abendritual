@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141832">
+  <title>Abendritual</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Abendritual">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-step="0">
+  <div class="sky" aria-hidden="true">
+    <div class="horizon"></div>
+    <div class="stars"></div>
+  </div>
+
+  <main>
+    <!-- Start -->
+    <section id="start" class="screen active" aria-labelledby="start-title">
+      <div class="screen-body">
+        <h1 id="start-title" class="greeting">Guten Abend</h1>
+        <p class="lede">Leg ab, was dich heute beschäftigt. Danach wird es still.</p>
+
+        <div id="today-list" class="today" hidden>
+          <h2 id="today-title">Für heute</h2>
+          <ul id="today-items" class="checklist"></ul>
+          <button id="today-clear" class="link" type="button">Liste leeren</button>
+        </div>
+      </div>
+      <div class="screen-foot">
+        <button id="begin" class="primary" type="button">Ritual beginnen</button>
+        <div class="foot-links">
+          <button id="open-momente" class="link" type="button">Gute Momente</button>
+          <button id="open-settings" class="link" type="button">Einstellungen</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gute Momente -->
+    <section id="momente" class="screen" aria-labelledby="momente-title">
+      <div class="screen-body">
+        <h2 id="momente-title">Gute Momente</h2>
+        <p id="momente-loading" class="hint quiet" hidden>Einen Moment …</p>
+        <p id="momente-empty" class="hint" hidden>Noch keine guten Momente. Am Ende des Rituals kannst du einen festhalten.</p>
+        <div id="momente-list"></div>
+      </div>
+      <div class="screen-foot">
+        <button class="link back" type="button" data-back="start">Zurück</button>
+      </div>
+    </section>
+
+    <!-- 1 Ablegen -->
+    <section id="ablegen" class="screen" aria-labelledby="ablegen-title">
+      <div class="screen-body">
+        <h2 id="ablegen-title">Was geht dir durch den Kopf?</h2>
+        <p class="hint">Schreib einfach drauflos. Eine Sache pro Zeile hilft beim Sortieren, muss aber nicht sein.</p>
+        <textarea id="brain" rows="10" placeholder="Die Präsentation morgen. Mama zurückrufen. Warum hab ich das vorhin so gesagt …" aria-label="Deine Gedanken"></textarea>
+      </div>
+      <div class="screen-foot">
+        <button id="brain-done" class="primary" type="button" disabled>Fertig</button>
+        <button class="link back" type="button" data-back="start">Zurück</button>
+      </div>
+    </section>
+
+    <!-- 2 Sortieren -->
+    <section id="sortieren" class="screen" aria-labelledby="sort-title">
+      <div class="screen-body">
+        <h2 id="sort-title">Drei Stapel</h2>
+        <p id="sort-status" class="hint" aria-live="polite"></p>
+        <p id="sort-tech" class="hint quiet tech" hidden></p>
+        <p id="sort-kind" class="kind" hidden></p>
+
+        <div id="pile-loading" class="pile" hidden>
+          <ul class="thoughts"></ul>
+        </div>
+
+        <div id="pile-unsorted" class="pile" hidden>
+          <h3>Noch nicht sortiert</h3>
+          <ul class="thoughts"></ul>
+        </div>
+        <div id="pile-morgen" class="pile" data-pile="morgen">
+          <h3>Morgen erledigen</h3>
+          <p class="pile-note">Wird gespeichert und liegt morgen für dich bereit.</p>
+          <ul class="thoughts"></ul>
+          <p class="pile-done">Liegt für morgen bereit.</p>
+        </div>
+        <div id="pile-nicht" class="pile" data-pile="nicht">
+          <h3>Nicht heute Abend</h3>
+          <p class="pile-note">Kannst du gerade nicht ändern. Kommt in die Kiste.</p>
+          <ul class="thoughts"></ul>
+          <p class="pile-done">Liegt in der Kiste. Für heute ist sie zu.</p>
+        </div>
+        <div id="pile-gedanke" class="pile" data-pile="gedanke">
+          <h3>Nur ein Gedanke</h3>
+          <p class="pile-note">Darf einfach gehen.</p>
+          <ul class="thoughts"></ul>
+          <p class="pile-done">Ist weitergezogen.</p>
+        </div>
+      </div>
+      <div class="screen-foot">
+        <button id="release" class="primary" type="button" disabled>Ablegen</button>
+        <button id="sort-next" class="primary" type="button" hidden>Weiter</button>
+        <button id="sort-manual" class="link" type="button" hidden>Selbst sortieren</button>
+      </div>
+    </section>
+
+    <!-- 3 Guter Moment -->
+    <section id="moment" class="screen" aria-labelledby="moment-title">
+      <div class="screen-body">
+        <h2 id="moment-title">Was war heute gut?</h2>
+        <p class="hint">Eine Zeile reicht. Gern etwas ganz Kleines.</p>
+        <input id="moment-input" type="text" maxlength="200" autocomplete="off" aria-label="Ein guter Moment von heute">
+      </div>
+      <div class="screen-foot">
+        <button id="moment-next" class="primary" type="button">Zur Meditation</button>
+        <button id="moment-skip" class="link" type="button">Überspringen</button>
+      </div>
+    </section>
+
+    <!-- 4 Meditation -->
+    <section id="meditation" class="screen" aria-labelledby="med-title">
+      <div class="screen-body center">
+        <h2 id="med-title" class="visually-hidden">Meditation</h2>
+        <div class="moon-wrap">
+          <div id="moon" class="moon" aria-hidden="true"></div>
+        </div>
+        <p id="breath-word" class="breath-word" aria-live="off">Mach es dir bequem</p>
+        <p id="med-note" class="hint quiet"></p>
+        <div class="med-progress" aria-hidden="true"><span id="med-bar"></span></div>
+      </div>
+      <div class="screen-foot">
+        <button id="med-start" class="primary" type="button">Meditation starten</button>
+        <div id="med-controls" class="controls" hidden>
+          <button id="med-pause" class="ghost" type="button">Pause</button>
+          <button id="med-stop" class="link" type="button">Beenden</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ende -->
+    <section id="ende" class="screen" aria-labelledby="end-title">
+      <div class="screen-body center">
+        <h2 id="end-title" class="goodnight">Gute Nacht.</h2>
+        <p class="hint quiet">Bleib einfach liegen und lass dich treiben.</p>
+      </div>
+      <div class="screen-foot">
+        <button id="end-home" class="link" type="button">Zum Anfang</button>
+      </div>
+    </section>
+
+    <!-- Einstellungen -->
+    <section id="settings" class="screen" aria-labelledby="settings-title">
+      <div class="screen-body">
+        <h2 id="settings-title">Einstellungen</h2>
+
+        <fieldset id="account">
+          <legend>Konto</legend>
+          <p id="acc-off" class="hint quiet">Noch nicht eingerichtet. Wie das geht, steht im README unter „Konto &amp; Speichern“.</p>
+          <div id="acc-login" hidden>
+            <p class="hint quiet">Melde dich an, damit deine Liste und deine guten Momente sicher gespeichert und auf all deinen Geräten gleich sind.</p>
+            <label class="field">
+              <span>E-Mail</span>
+              <input id="acc-email" type="email" autocomplete="username" spellcheck="false">
+            </label>
+            <label class="field">
+              <span>Passwort</span>
+              <input id="acc-password" type="password" autocomplete="current-password" minlength="6">
+            </label>
+            <button id="acc-signin" class="ghost" type="button">Anmelden</button>
+            <button id="acc-signup" class="link" type="button">Neues Konto erstellen</button>
+          </div>
+          <div id="acc-in" hidden>
+            <p class="hint">Angemeldet als <strong id="acc-who"></strong></p>
+            <button id="acc-logout" class="link" type="button">Abmelden</button>
+          </div>
+          <p id="acc-msg" class="hint quiet" aria-live="polite"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Sortieren</legend>
+          <label class="radio"><input type="radio" name="sortmode" value="ki"> Gemini sortiert vor, ich korrigiere</label>
+          <label class="radio"><input type="radio" name="sortmode" value="selbst"> Ich sortiere selbst</label>
+          <p class="hint quiet">Gemini bekommt deinen Text, um ihn zu sortieren. Im Gratis-Tarif darf Google solche Texte zur Verbesserung seiner Produkte nutzen. Bei sehr privaten Gedanken: selbst sortieren.</p>
+        </fieldset>
+
+        <label class="field">
+          <span>Gemini-API-Schlüssel</span>
+          <input id="set-key" type="password" autocomplete="off" spellcheck="false" placeholder="Kostenlos bei aistudio.google.com">
+        </label>
+        <label class="field">
+          <span>Gemini-Modell</span>
+          <input id="set-model" type="text" autocomplete="off" spellcheck="false">
+        </label>
+
+        <label class="field" id="voice-field" hidden>
+          <span>Stimme</span>
+          <select id="set-voice"></select>
+        </label>
+
+        <label class="field">
+          <span>Musik-Lautstärke</span>
+          <input id="set-music" type="range" min="0" max="100" step="1">
+        </label>
+
+        <p id="storage-note" class="hint quiet">Alles wird nur in diesem Browser gespeichert.</p>
+        <button id="wipe" class="link danger" type="button">Liste und gute Momente löschen</button>
+      </div>
+      <div class="screen-foot">
+        <button id="settings-save" class="primary" type="button">Speichern</button>
+        <button class="link back" type="button" data-back="start">Abbrechen</button>
+      </div>
+    </section>
+  </main>
+
+  <audio id="voice-audio" preload="auto"></audio>
+  <audio id="music-audio" preload="auto" loop></audio>
+  <p id="toast" class="toast" role="status" hidden></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="config.local.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+Leg hier deine fertigen Dateien ab:
+
+  meditation.mp3   die gesprochene Meditation (ElevenLabs)
+  musik.mp3        die Hintergrundmusik (läuft in Schleife)
+
+Fehlt musik.mp3, erzeugt die App einen leisen Klangteppich.
+Fehlt meditation.mp3, läuft die Meditation 5 Minuten nur mit dem Atem-Mond.
+
+Mehrere Stimmen? Datei z. B. als meditation-anna.mp3 ablegen und in app.js
+oben bei VOICES eintragen. Dann gibt es in den Einstellungen eine Auswahl.
