@@ -48,13 +48,31 @@
     <!-- Gute Momente -->
     <section id="momente" class="screen" aria-labelledby="momente-title">
       <div class="screen-body">
-        <h2 id="momente-title">Gute Momente</h2>
+        <h2 id="momente-title">Dein Himmel</h2>
+        <p id="momente-sub" class="hint"></p>
         <p id="momente-loading" class="hint quiet" hidden>Einen Moment …</p>
-        <p id="momente-empty" class="hint" hidden>Noch keine guten Momente. Am Ende des Rituals kannst du einen festhalten.</p>
-        <div id="momente-list"></div>
+        <p id="momente-empty" class="hint" hidden>Noch kein Stern. Halte am Ende des Rituals einen guten Moment fest, dann leuchtet hier der erste.</p>
+
+        <div id="view-sky">
+          <div id="sky-field" class="sky-field">
+            <svg id="constellation" class="constellation" aria-hidden="true"></svg>
+          </div>
+          <div id="star-card" class="star-card" aria-live="polite" hidden>
+            <p id="star-text" class="star-text"></p>
+            <p id="star-date" class="moment-date"></p>
+            <button id="star-delete" class="link danger" type="button">Löschen</button>
+          </div>
+        </div>
+
+        <div id="view-list" hidden>
+          <div id="momente-list"></div>
+        </div>
       </div>
       <div class="screen-foot">
-        <button class="link back" type="button" data-back="start">Zurück</button>
+        <div class="foot-links">
+          <button id="momente-view" class="link" type="button">Als Liste lesen</button>
+          <button class="link back" type="button" data-back="start">Zurück</button>
+        </div>
       </div>
     </section>
 
@@ -97,6 +115,11 @@
           <h3>Nicht heute Abend</h3>
           <p class="pile-note">Kannst du gerade nicht ändern. Kommt in die Kiste.</p>
           <ul class="thoughts"></ul>
+          <svg class="kiste" viewBox="0 0 120 80" aria-hidden="true">
+            <rect class="kiste-body" x="16" y="34" width="88" height="40" rx="3"/>
+            <path class="kiste-band" d="M16 46 H104"/>
+            <rect class="kiste-lid" x="12" y="24" width="96" height="9" rx="2"/>
+          </svg>
           <p class="pile-done">Liegt in der Kiste. Für heute ist sie zu.</p>
         </div>
         <div id="pile-gedanke" class="pile" data-pile="gedanke">
@@ -150,8 +173,10 @@
     <!-- Ende -->
     <section id="ende" class="screen" aria-labelledby="end-title">
       <div class="screen-body center">
+        <div id="end-star" class="end-star" aria-hidden="true" hidden></div>
         <h2 id="end-title" class="goodnight">Gute Nacht.</h2>
         <p class="hint quiet">Bleib einfach liegen und lass dich treiben.</p>
+        <p id="end-star-note" class="hint quiet end-star-note" hidden>Dein guter Moment leuchtet jetzt als Stern an deinem Himmel.</p>
       </div>
       <div class="screen-foot">
         <button id="end-home" class="link" type="button">Zum Anfang</button>

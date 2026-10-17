@@ -100,7 +100,7 @@ function clearTimers() {
   timers.clear();
 }
 
-const STEP = { start: 0, settings: 0, momente: 0, ablegen: 1, sortieren: 2, moment: 3, meditation: 4, ende: 5 };
+const STEP = { start: 0, settings: 0, momente: 4, ablegen: 1, sortieren: 2, moment: 3, meditation: 4, ende: 5 };
 
 function show(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
@@ -515,22 +515,214 @@ $("#today-clear").addEventListener("click", async () => {
   renderHome();
 });
 
-// ---------- Gute Momente ----------
+// ---------- Gute Momente: dein Sternenhimmel ----------
+//
+// Jeder gute Moment ist ein Stern. Sein Platz wird aus seiner id berechnet,
+// damit er immer an derselben Stelle steht – auch wenn neue Sterne dazukommen.
+
+let momentRows = [];
+let placedStars = [];
+let selectedStarId = null;
+let momentView = "himmel";
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 $("#open-momente").addEventListener("click", async () => {
   show("momente");
-  $("#momente-list").replaceChildren();
-  $("#momente-empty").hidden = true;
+  setMomentView("himmel");
+  momentRows = [];
+  renderMomentScreen();
   $("#momente-loading").hidden = false;
-  const rows = await data.momente();
+  momentRows = await data.momente();
   $("#momente-loading").hidden = true;
-  renderMomente(rows);
+  renderMomentScreen();
 });
+
+$("#momente-view").addEventListener("click", () => {
+  setMomentView(momentView === "himmel" ? "liste" : "himmel");
+});
+
+function setMomentView(view) {
+  momentView = view;
+  $("#view-sky").hidden = view !== "himmel";
+  $("#view-list").hidden = view !== "liste";
+  $("#momente-view").textContent = view === "himmel" ? "Als Liste lesen" : "Als Himmel ansehen";
+}
+
+function renderMomentScreen() {
+  const n = momentRows.length;
+  const loading = !$("#momente-loading").hidden;
+  $("#momente-empty").hidden = n > 0 || loading;
+  $("#momente-view").hidden = n === 0;
+  $("#momente-sub").textContent =
+    n === 0 ? "" : n === 1 ? "Ein Stern. Tipp ihn an." : `${n} Sterne. Tipp einen an, um ihn zu lesen.`;
+  renderSky();
+  renderMomente(momentRows);
+}
+
+// Kleiner, deterministischer Zufall aus einem Text (FNV-1a + xorshift).
+function seeded(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h = h >>> 0 || 1;
+  return () => {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    h >>>= 0;
+    return h / 4294967296;
+  };
+}
+
+// Plätze von alt nach neu vergeben; jeder Stern hält etwas Abstand zu den älteren.
+function layoutStars(rows) {
+  const ASPECT = 0.62; // Breite/Höhe des Himmels, fest, damit Plätze überall gleich sind
+  const MIN_DIST = 0.075;
+  const placed = [];
+  const oldestFirst = [...rows].sort((a, b) => a.erstellt_am.localeCompare(b.erstellt_am));
+  for (const m of oldestFirst) {
+    const rnd = seeded(m.id);
+    let best = null;
+    let bestDist = -1;
+    for (let i = 0; i < 24; i++) {
+      const p = { x: 0.07 + rnd() * 0.86, y: 0.07 + rnd() * 0.84 };
+      const d = Math.min(1, ...placed.map((q) => Math.hypot((p.x - q.x) * ASPECT, p.y - q.y)));
+      if (d > bestDist) {
+        best = p;
+        bestDist = d;
+      }
+      if (d >= MIN_DIST) break;
+    }
+    placed.push({ ...best, m });
+  }
+  return placed;
+}
+
+function starSize(datum) {
+  const days = (Date.now() - new Date(datum + "T12:00").getTime()) / DAY_MS;
+  if (days < 1) return 13;
+  if (days < 7) return 10;
+  if (days < 45) return 8;
+  return 6;
+}
+
+function renderSky() {
+  const field = $("#sky-field");
+  field.querySelectorAll(".star").forEach((s) => s.remove());
+  placedStars = layoutStars(momentRows);
+
+  for (const p of placedStars) {
+    const { m } = p;
+    const day = new Date(m.datum + "T12:00");
+    const star = document.createElement("button");
+    star.type = "button";
+    star.className = "star";
+    star.dataset.id = m.id;
+    star.classList.toggle("fresh", m.datum === today());
+    star.style.left = p.x * 100 + "%";
+    star.style.top = p.y * 100 + "%";
+    star.style.setProperty("--size", starSize(m.datum) + "px");
+    // Jeder Stern funkelt in seinem eigenen Takt.
+    const rnd = seeded(m.id + "*");
+    star.style.setProperty("--twinkle", (3.5 + rnd() * 4).toFixed(2) + "s");
+    star.style.setProperty("--delay", (-rnd() * 6).toFixed(2) + "s");
+    star.setAttribute(
+      "aria-label",
+      `${day.toLocaleDateString("de-DE", { day: "numeric", month: "long" })}: ${m.text}`,
+    );
+    star.addEventListener("click", (e) => {
+      e.stopPropagation();
+      selectStar(selectedStarId === m.id ? null : m.id);
+    });
+    field.append(star);
+  }
+  selectStar(placedStars.some((p) => p.m.id === selectedStarId) ? selectedStarId : null);
+}
+
+// Tipp auf eine freie Stelle der Seite schließt den offenen Stern.
+$("#momente").addEventListener("click", (e) => {
+  if (selectedStarId && !e.target.closest(".star, #star-card, button")) selectStar(null);
+});
+
+function selectStar(id) {
+  selectedStarId = id;
+  const field = $("#sky-field");
+  field.classList.toggle("has-selection", Boolean(id));
+  field.querySelectorAll(".star").forEach((s) => {
+    const on = s.dataset.id === id;
+    s.classList.toggle("selected", on);
+    s.setAttribute("aria-pressed", String(on));
+  });
+
+  const p = placedStars.find((s) => s.m.id === id);
+  $("#star-card").hidden = !p;
+  drawConstellation(p ? p.m.datum.slice(0, 7) : null);
+  if (!p) return;
+  $("#star-text").textContent = p.m.text;
+  $("#star-date").textContent = new Date(p.m.datum + "T12:00").toLocaleDateString("de-DE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// Die Sterne eines Monats als Sternbild: vom ältesten Stern aus immer zum
+// nächstgelegenen noch freien Stern. Gezeichnet in echten Pixeln des Himmels.
+function drawConstellation(month) {
+  const svg = $("#constellation");
+  svg.replaceChildren();
+  if (!month) return;
+  const { width: w, height: h } = $("#sky-field").getBoundingClientRect();
+  const rest = placedStars
+    .filter((p) => p.m.datum.startsWith(month))
+    .sort((a, b) => a.m.erstellt_am.localeCompare(b.m.erstellt_am))
+    .map((p) => ({ x: p.x * w, y: p.y * h }));
+  if (rest.length < 2 || !w) return;
+
+  const path = [rest.shift()];
+  while (rest.length) {
+    const last = path.at(-1);
+    let best = 0;
+    rest.forEach((p, i) => {
+      if (Math.hypot(p.x - last.x, p.y - last.y) < Math.hypot(rest[best].x - last.x, rest[best].y - last.y)) best = i;
+    });
+    path.push(rest.splice(best, 1)[0]);
+  }
+
+  svg.setAttribute("viewBox", `0 0 ${w.toFixed(1)} ${h.toFixed(1)}`);
+  const line = document.createElementNS(SVG_NS, "polyline");
+  line.setAttribute("points", path.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "));
+  line.setAttribute("pathLength", "1");
+  svg.append(line);
+}
+
+// Bei geänderter Fenstergröße das offene Sternbild neu zeichnen
+window.addEventListener("resize", () => {
+  if (selectedStarId) selectStar(selectedStarId);
+});
+
+$("#star-delete").addEventListener("click", () => {
+  if (selectedStarId) deleteMomentAndRefresh(selectedStarId);
+});
+
+async function deleteMomentAndRefresh(id) {
+  if (!confirm("Diesen Moment löschen? Sein Stern verschwindet dann vom Himmel.")) return;
+  try {
+    await data.deleteMoment(id);
+    momentRows = momentRows.filter((r) => r.id !== id);
+    if (selectedStarId === id) selectedStarId = null;
+    renderMomentScreen();
+  } catch {
+    toast("Der Moment konnte gerade nicht gelöscht werden. Prüf deine Verbindung.");
+  }
+}
 
 function renderMomente(rows) {
   const box = $("#momente-list");
   box.replaceChildren();
-  $("#momente-empty").hidden = rows.length > 0;
 
   let month = null;
   let ul = null;
@@ -567,15 +759,7 @@ function renderMomente(rows) {
     del.type = "button";
     del.className = "link danger moment-delete";
     del.textContent = "Löschen";
-    del.addEventListener("click", async () => {
-      if (!confirm("Diesen Moment löschen?")) return;
-      try {
-        await data.deleteMoment(m.id);
-        renderMomente(rows.filter((r) => r.id !== m.id));
-      } catch {
-        toast("Der Moment konnte gerade nicht gelöscht werden. Prüf deine Verbindung.");
-      }
-    });
+    del.addEventListener("click", () => deleteMomentAndRefresh(m.id));
 
     li.append(text, date, del);
     ul.append(li);
@@ -602,7 +786,10 @@ document.querySelectorAll("[data-back]").forEach((b) =>
 
 // ---------- 1 Ablegen ----------
 
+let momentTonight = false; // für den neuen Stern bei „Gute Nacht“
+
 function startWriting() {
+  momentTonight = false;
   const brain = $("#brain");
   brain.value = "";
   $("#brain-done").disabled = true;
@@ -637,6 +824,8 @@ function resetSortScreen() {
   const screen = $("#sortieren");
   screen.classList.remove("releasing", "released");
   screen.querySelectorAll(".pile").forEach((p) => p.classList.remove("empty"));
+  // Deckel der Kiste wieder öffnen (die Animation hält sonst den Endzustand fest)
+  screen.querySelectorAll(".kiste-lid").forEach((lid) => lid.getAnimations().forEach((a) => a.cancel()));
   $("#sort-kind").hidden = true;
   $("#release").hidden = false;
   $("#release").disabled = true;
@@ -778,7 +967,7 @@ function renderPiles() {
   $("#release").disabled = thoughts.length === 0 || unsorted > 0;
 }
 
-$("#release").addEventListener("click", () => {
+$("#release").addEventListener("click", async () => {
   saveTomorrow(thoughts.filter((t) => t.pile === "morgen").map((t) => t.text));
 
   const screen = $("#sortieren");
@@ -792,13 +981,102 @@ $("#release").addEventListener("click", () => {
   $("#sort-status").textContent = "";
   screen.classList.add("releasing");
 
-  later(() => {
-    screen.classList.remove("releasing");
-    screen.classList.add("released");
-    $("#sort-next").hidden = false;
-    $("#sort-next").focus();
-  }, 2700);
+  if (!reducedMotion) await releaseAnimation(screen);
+
+  screen.classList.remove("releasing");
+  screen.classList.add("released");
+  $("#sort-next").hidden = false;
+  $("#sort-next").focus();
 });
+
+// Der eine große Moment des Rituals:
+// „Nur ein Gedanke“ steigt als Licht in den Himmel, „Nicht heute Abend“ fliegt
+// in die Kiste und der Deckel geht zu, „Morgen“ wird sanft eingesammelt.
+async function releaseAnimation(screen) {
+  const done = [];
+  const lights = document.createElement("div");
+  lights.className = "lights";
+  document.body.append(lights);
+
+  screen.querySelectorAll('.pile[data-pile="gedanke"] .thought').forEach((li, i) => {
+    const r = li.getBoundingClientRect();
+    // Das Licht steigt aus der Mitte des geschriebenen Textes auf
+    const range = document.createRange();
+    range.selectNodeContents(li.querySelector(".thought-text") ?? li);
+    const t = range.getBoundingClientRect();
+    const light = document.createElement("span");
+    light.className = "light";
+    light.style.left = (t.width ? t.left + t.width / 2 : r.left + r.width / 2) + "px";
+    light.style.top = r.top + r.height / 2 + "px";
+    lights.append(light);
+
+    const delay = 200 + i * 240;
+    const rise = r.top + r.height / 2 + 80; // bis über den oberen Rand
+    const sway = (i % 2 ? 1 : -1) * (10 + ((i * 7) % 16));
+    done.push(
+      li.animate(
+        [{ opacity: 1, filter: "blur(0)" }, { opacity: 0, filter: "blur(5px)" }],
+        { duration: 900, delay, easing: "ease-out", fill: "forwards" },
+      ).finished,
+      light.animate(
+        [
+          { transform: "translate(0, 0) scale(0.2)", opacity: 0 },
+          { transform: "translate(0, -6px) scale(1)", opacity: 1, offset: 0.12 },
+          { transform: `translate(${sway}px, ${-rise * 0.45}px) scale(0.85)`, opacity: 0.95, offset: 0.55 },
+          { transform: `translate(${-sway / 2}px, ${-rise}px) scale(0.35)`, opacity: 0 },
+        ],
+        { duration: 2800, delay, easing: "cubic-bezier(0.4, 0, 0.7, 0.6)", fill: "forwards" },
+      ).finished,
+    );
+  });
+
+  const nicht = screen.querySelector('.pile[data-pile="nicht"]');
+  const boxed = [...nicht.querySelectorAll(".thought")];
+  if (boxed.length) {
+    const box = nicht.querySelector(".kiste").getBoundingClientRect();
+    const tx = box.left + box.width / 2;
+    const ty = box.top + box.height * 0.62;
+    const flights = boxed.map((li, i) => {
+      const r = li.getBoundingClientRect();
+      const fromX = r.left + Math.min(r.width, 160) / 2;
+      const fromY = r.top + r.height / 2;
+      li.style.transformOrigin = "left center";
+      return li.animate(
+        [
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          { transform: `translate(${tx - fromX}px, ${ty - fromY}px) scale(0.2)`, opacity: 0 },
+        ],
+        { duration: 850, delay: 600 + i * 170, easing: "cubic-bezier(0.55, 0, 0.75, 0.2)", fill: "forwards" },
+      ).finished;
+    });
+    done.push(
+      Promise.all(flights).then(
+        () =>
+          nicht.querySelector(".kiste-lid").animate(
+            [
+              { transform: "rotate(38deg)" },
+              { transform: "rotate(-3deg)", offset: 0.75 },
+              { transform: "rotate(0deg)" },
+            ],
+            { duration: 650, easing: "ease-in", fill: "forwards" },
+          ).finished,
+      ),
+    );
+  }
+
+  screen.querySelectorAll('.pile[data-pile="morgen"] .thought').forEach((li, i) => {
+    done.push(
+      li.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-8px)" }],
+        { duration: 700, delay: 1300 + i * 90, easing: "ease-in", fill: "forwards" },
+      ).finished,
+    );
+  });
+
+  await Promise.all(done);
+  await new Promise((r) => setTimeout(r, 400));
+  lights.remove();
+}
 
 $("#sort-next").addEventListener("click", () => {
   $("#moment-input").value = "";
@@ -1006,6 +1284,7 @@ function technicalReason(err) {
 $("#moment-next").addEventListener("click", () => {
   const text = $("#moment-input").value.trim();
   if (text) data.addMoment(text);
+  momentTonight = Boolean(text);
   prepareMeditation();
 });
 $("#moment-input").addEventListener("keydown", (e) => {
@@ -1188,6 +1467,8 @@ function finishMeditation() {
   voiceAudio.ontimeupdate = null;
   med = null;
 
+  $("#end-star").hidden = !momentTonight;
+  $("#end-star-note").hidden = !momentTonight;
   show("ende");
   music.fadeOut(MUSIC_TAIL_SECONDS, releaseWakeLock);
 }
